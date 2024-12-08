@@ -4,7 +4,6 @@
 #include <cmath>
 
 
-
 namespace data {
 
 // fields that hold the solution
@@ -32,19 +31,24 @@ void SubDomain::init(int mpi_rank, int mpi_size,
     // TODO: determine the number of sub-domains in the x and y dimensions
     //       using MPI_Dims_create
     int dims[2] = {1, 1};
+    MPI_Dims_create(mpi_size, 2, dims)
     ndomy = dims[0];
     ndomx = dims[1];
 
     // TODO: create a 2D non-periodic Cartesian topology using MPI_Cart_create
     int periods[2] = {0, 0};
+    MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, 0, &comm_cart);
 
     // TODO: retrieve coordinates of the rank in the topology using
     // MPI_Cart_coords
     int coords[2] = {0, 0};
+    MPI_Cart_coords(cart_comm, mpi_rank, 2, coords);
     domy = coords[0] + 1;
     domx = coords[1] + 1;
 
     // TODO: set neighbours for all directions using MPI_Cart_shift
+    MPI_Cart_shift(cart_comm, 1, 1, &neighbour_west, &neighbour_east); // x方向的邻居
+    MPI_Cart_shift(cart_comm, 0, 1, &neighbour_north, &neighbour_south);
 
     // get bounding box
     nx = discretization.nx / ndomx;
@@ -59,6 +63,7 @@ void SubDomain::init(int mpi_rank, int mpi_size,
 
     rank = mpi_rank;
     size = mpi_size;
+    
 }
 
 // print domain decomposition information to stdout

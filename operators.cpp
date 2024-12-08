@@ -40,6 +40,29 @@ void diffusion(data::Field const& s_old, data::Field const& s_new,
 
     // TODO: exchange the ghost cells using non-blocking point-to-point
     //       communication
+    MPI_Request requests[8];
+
+    // Pack data into send buffers
+    for (int j = 0; j < ny; j++) {
+        buffW[j] = s_new(0, j);      // West boundary
+        buffE[j] = s_new(iend, j);   // East boundary
+    }
+    for (int i = 0; i < nx; i++) {
+        buffS[i] = s_new(i, 0);      // South boundary
+        buffN[i] = s_new(i, jend);   // North boundary
+    }
+
+    // Non-blocking sends
+    MPI_Isend(buffN, nx, MPI_DOUBLE, domain.north, 0, MPI_COMM_WORLD, &requests[0]);
+    MPI_Isend(buffS, nx, MPI_DOUBLE, domain.south, 1, MPI_COMM_WORLD, &requests[1]);
+    MPI_Isend(buffE, ny, MPI_DOUBLE, domain.east, 2, MPI_COMM_WORLD, &requests[2]);
+    MPI_Isend(buffW, ny, MPI_DOUBLE, domain.west, 3, MPI_COMM_WORLD, &requests[3]);
+
+    // Non-blocking receives
+    MPI_Irecv(bndN, nx, MPI_DOUBLE, domain.north, 1, MPI_COMM_WORLD, &requests[4]);
+    MPI_Irecv(bndS, nx, MPI_DOUBLE, domain.south, 0, MPI_COMM_WORLD, &requests[5]);
+    MPI_Irecv(bndE, ny, MPI_DOUBLE, domain.east, 3, MPI_COMM_WORLD, &requests[6]);
+    MPI_Irecv(bndW, ny, MPI_DOUBLE, domain.west, 2, MPI_COMM_WORLD, &requests[7]);
 
     // the interior grid points
     for (int j=1; j < jend; j++) {

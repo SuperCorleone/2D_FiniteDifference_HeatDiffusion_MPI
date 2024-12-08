@@ -1,6 +1,7 @@
 #ifndef DATA_H
 #define DATA_H
 #include <cassert>
+#include <mpi.h>
 
 namespace data {
 // define some helper types that can be used to pass simulation
@@ -47,7 +48,7 @@ struct SubDomain {
     // mpi info
     int size;
     int rank;
-    // MPI_Comm comm_cart; // TODO: Save Cartesian topology communicator here
+    MPI_Comm comm_cart; // TODO: Save Cartesian topology communicator here
                            //       and don't forget to free it
 
     // grid points in x and y dimension of this sub-domain
