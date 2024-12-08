@@ -28,8 +28,43 @@ def manager(comm, tasks):
     -------
     ... ToDo ...
     """
+    size = comm.Get_size()
+    num_workers = size - 1  # Exclude the manager itself
+    task_queue = tasks.copy()
+    tasks_done = {worker: 0 for worker in range(1, size)}
 
-    pass
+    # Distribute initial tasks to workers
+    for worker in range(1, size):
+        if task_queue:
+            task = task_queue.pop(0)
+            comm.send(task, dest=worker, tag=TAG_TASK)
+        else:
+            comm.send(None, dest=worker, tag=TAG_DONE)  # No more tasks
+
+    results = []
+
+    # Collect results and send more tasks
+    while len(results) < len(tasks):
+        status = MPI.Status()
+        result = comm.recv(source=MPI.ANY_SOURCE, tag=TAG_TASK_DONE, status=status)
+        results.append(result)
+
+        worker = status.source
+        tasks_done[worker] += 1
+
+        # Assign a new task to the worker, if available
+        if task_queue:
+            task = task_queue.pop(0)
+            comm.send(task, dest=worker, tag=TAG_TASK)
+        else:
+            comm.send(None, dest=worker, tag=TAG_DONE)  # Signal no more tasks
+
+    # Collect remaining results from workers
+    for worker in range(1, size):
+        comm.send(None, dest=worker, tag=TAG_DONE)  # All workers should stop
+
+    return results, tasks_done
+
 
 def worker(comm):
     """
@@ -40,7 +75,16 @@ def worker(comm):
     comm : mpi4py.MPI communicator
         MPI communicator
     """
-    pass
+    while True:
+        task = comm.recv(source=MANAGER, tag=MPI.ANY_TAG, status=MPI.Status())
+        tag = task.tag
+
+        if tag == TAG_DONE:
+            break  # No more tasks, exit
+        elif tag == TAG_TASK:
+            task.do_work()
+            comm.send(task, dest=MANAGER, tag=TAG_TASK_DONE)
+
 
 def readcmdline(rank):
     """
